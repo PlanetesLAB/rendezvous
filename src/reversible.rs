@@ -1,6 +1,6 @@
 //! Implementation of algorithms discussed in [Hernandez & Dehnen (2024)](https://academic.oup.com/mnras/article/530/4/3870/7642878)
 
-use prosia_extensions::types::Vec3;
+use planetes_ext::types::Vec3;
 
 pub enum IntegratorError {
     KeplerStepFailed,

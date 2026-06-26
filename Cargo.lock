@@ -41,9 +41,9 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "itertools"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
 ]
@@ -101,6 +101,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "planetes-ext"
+version = "0.2.0"
+source = "git+https://github.com/PlanetesLAB/planetes-ext?tag=v0.2.0#c2ea6eef5fe5a8552d9a476c04632e2be4ea4c16"
+dependencies = [
+ "ndarray",
+ "num-traits",
+]
+
+[[package]]
 name = "portable-atomic"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -122,16 +131,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ee95bc4ef87b8d5ba32e8b7714ccc834865276eab0aed5c9958d00ec45f49e8"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "prosia-extensions"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff044b3ba3b7f684b10cbc51027a2392c594ce755dfc7abf8b96faef2e45bc2a"
-dependencies = [
- "ndarray",
- "num-traits",
 ]
 
 [[package]]
@@ -174,7 +173,7 @@ name = "rendezvous"
 version = "0.1.0"
 dependencies = [
  "itertools",
- "prosia-extensions",
+ "planetes-ext",
  "rayon",
  "thiserror",
 ]

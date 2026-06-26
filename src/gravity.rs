@@ -1,5 +1,5 @@
 use itertools::iproduct;
-use prosia_extensions::types::Vec3;
+use planetes_ext::types::Vec3;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
     IntoParallelRefMutIterator, ParallelIterator,

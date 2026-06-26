@@ -1,6 +1,6 @@
 use std::ops::{AddAssign, ControlFlow, MulAssign, SubAssign};
 
-use prosia_extensions::types::Vec3;
+use planetes_ext::types::Vec3;
 use rayon::iter::ParallelIterator;
 
 use crate::boundary::Boundary;

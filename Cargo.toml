@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-itertools = "0.14.0"
-prosia-extensions = "0.2.1"
+itertools = "0.15.0"
+planetes-ext = { git = "https://github.com/PlanetesLAB/planetes-ext", tag = "v0.2.0" }
 rayon = "1.12.0"
 thiserror = "2.0.18"
 

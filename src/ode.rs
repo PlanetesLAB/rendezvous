@@ -1,4 +1,4 @@
-use prosia_extensions::types::{RMatrix, RVector};
+use planetes_ext::types::{RMatrix, RVector};
 
 pub trait OdeSystem {
     /// Number of components / dimensions in the ODE system
