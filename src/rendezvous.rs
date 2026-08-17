@@ -135,6 +135,7 @@ impl Default for Simulation {
 }
 
 impl Simulation {
+    #[must_use]
     pub fn init(integrator: Integrator) -> Self {
         Simulation {
             integrator,
@@ -142,6 +143,7 @@ impl Simulation {
         }
     }
 
+    #[allow(clippy::cast_precision_loss)]
     pub fn configure_box(&mut self, root_size: f64, x: usize, y: usize, z: usize) {
         self.root_size = root_size;
         self.root_x = x;
@@ -154,9 +156,10 @@ impl Simulation {
         );
 
         self.box_size_max = self.box_size.x.max(self.box_size.y).max(self.box_size.z);
-        if self.root_x == 0 || self.root_y == 0 || self.root_z == 0 {
-            panic!("Number of root cells in each dimension must be positive");
-        }
+        assert!(
+            !(self.root_x == 0 || self.root_y == 0 || self.root_z == 0),
+            "Number of root cells in each dimension must be positive"
+        );
     }
 
     pub fn add(&mut self, p: Particle) {
@@ -180,7 +183,7 @@ impl Simulation {
         if matches!(self.gravity, Gravity::Tree)
             || matches!(self.collision, Collision::Tree | Collision::LineTree)
         {
-            if self.root_size == -1.0 {
+            if (self.root_size - -1.0).abs() < 1e-12 {
                 eprintln!("ERROR: Box not configured before adding particles.");
                 return;
             }
@@ -204,6 +207,7 @@ impl Simulation {
         }
     }
 
+    #[must_use]
     pub fn is_particle_in_box(&self, p: &Particle) -> bool {
         match self.boundary {
             Boundary::Open | Boundary::Shear | Boundary::Periodic => {
@@ -232,11 +236,12 @@ impl Simulation {
         }
     }
 
+    #[must_use]
     pub fn is_particle_inside_node(&self, node_id: NodeId) -> bool {
         let node = self.tree.as_ref().unwrap().get_node(node_id).unwrap();
         let pt = match node.kind {
             NodeKind::Leaf { particle: pt } => pt,
-            _ => {
+            NodeKind::Internal { .. } => {
                 panic!("is_particle_in_node called on non-leaf node");
             }
         };
@@ -260,6 +265,7 @@ impl Simulation {
         unimplemented!()
     }
 
+    #[must_use]
     pub fn coefficient_of_restitution(&self, _p1: &Particle, _p2: &Particle) -> f64 {
         unimplemented!()
     }
@@ -267,7 +273,7 @@ impl Simulation {
     pub fn run_heartbeat(&mut self) -> StepDecision {
         if let Some(hb) = self.heartbeat {
             hb(self);
-        };
+        }
 
         if let Some(max_distance) = self.exit_max_distance {
             let max2 = max_distance * max_distance;
@@ -299,6 +305,7 @@ impl Simulation {
         ControlFlow::Continue(())
     }
 
+    #[must_use]
     pub fn sigint_received(&self) -> bool {
         todo!()
     }
@@ -333,7 +340,7 @@ impl Simulation {
         if tmax != f64::INFINITY {
             if self.exact_finish_time {
                 if (self.t + self.dt) * dt_sign >= tmax * dt_sign {
-                    if self.t == tmax {
+                    if (self.t - tmax).abs() < 1e-12 {
                         return ControlFlow::Break(ExitStatus::Success);
                     } else if matches!(self.run_state, RunState::LastStep) {
                         let mut tscale = 1e-12 * tmax.abs();
@@ -342,10 +349,9 @@ impl Simulation {
                         }
                         if (self.t - tmax).abs() < tscale {
                             return ControlFlow::Break(ExitStatus::Success);
-                        } else {
-                            self.synchronize();
-                            self.dt = tmax - self.t;
                         }
+                        self.synchronize();
+                        self.dt = tmax - self.t;
                     } else {
                         self.run_state = RunState::LastStep;
                         self.synchronize();
@@ -396,9 +402,8 @@ impl Simulation {
 
                         if self.tree.is_none() {
                             continue;
-                        } else {
-                            self.tree_needs_update = true;
                         }
+                        self.tree_needs_update = true;
                     }
                     i += 1;
                 }
@@ -473,7 +478,7 @@ impl Simulation {
                     }
                 });
             }
-            _ => {}
+            Boundary::None => {}
         }
     }
 
@@ -528,27 +533,26 @@ impl Simulation {
 
         if pi >= n {
             eprintln!(
-                "ERROR: Index {} passed to remove was out of range (N={}). Did not remove particle.",
-                pi, n
+                "ERROR: Index {pi} passed to remove was out of range (N={n}). Did not remove particle."
             );
             return false;
         }
 
-        if let Some(ref cfgs) = self.var_cfg {
-            if !cfgs.is_empty() {
-                eprintln!(
-                    "WARNING: Removing particles not supported when calculating MEGNO / Variational equations. \
+        if let Some(ref cfgs) = self.var_cfg
+            && !cfgs.is_empty()
+        {
+            eprintln!(
+                "WARNING: Removing particles not supported when calculating MEGNO / Variational equations. \
              The particle was not removed."
-                );
-                return false;
-            }
+            );
+            return false;
         }
 
         match &mut self.integrator {
             Integrator::Mercurius(m) => keep_sorted = m.remove(pi),
             Integrator::Trace(t) => keep_sorted = t.remove(pi, n),
             _ => {}
-        };
+        }
 
         if n == 1 {
             self.particles.clear();
@@ -600,8 +604,9 @@ impl Simulation {
     pub fn add_variational_second_order(&mut self) {}
 
     /// Returns true if there are active variational configurations in the simulation.
+    #[must_use]
     pub fn has_variational(&self) -> bool {
-        self.var_cfg.as_ref().map_or(false, |cfgs| !cfgs.is_empty())
+        self.var_cfg.as_ref().is_some_and(|cfgs| !cfgs.is_empty())
     }
 
     pub fn update_tree(&mut self) {
@@ -658,7 +663,7 @@ impl Simulation {
 
                     let particle = match tree.get_node(child_id).unwrap().kind {
                         NodeKind::Leaf { particle } => particle,
-                        _ => unreachable!("exactly one leaf expected"),
+                        NodeKind::Internal { .. } => unreachable!("exactly one leaf expected"),
                     };
 
                     {
@@ -673,7 +678,9 @@ impl Simulation {
                 node.kind = NodeKind::Internal { count: pt };
             }
             NodeKind::Leaf { particle } => {
-                if !self.is_particle_inside_node(node_id) {
+                if self.is_particle_inside_node(node_id) {
+                    self.particles[*particle].c = Some(node_id);
+                } else {
                     let oldpos = *particle;
 
                     let reinsertme = self.particles[oldpos].clone();
@@ -681,10 +688,10 @@ impl Simulation {
                     let last = self.particles.len() - 1;
                     self.particles.active.swap(oldpos, last);
 
-                    let moved_particle_cell = if oldpos != last {
-                        self.particles[oldpos].c
-                    } else {
+                    let moved_particle_cell = if oldpos == last {
                         None
+                    } else {
+                        self.particles[oldpos].c
                     };
 
                     self.particles.active.pop();
@@ -699,8 +706,6 @@ impl Simulation {
                     }
 
                     tree.remove_node(node_id);
-                } else {
-                    self.particles[*particle].c = Some(node_id);
                 }
             }
         }
@@ -791,7 +796,7 @@ impl Simulation {
     }
 
     pub fn integrate(&mut self, t_end: f64) -> ExitStatus {
-        if t_end != self.t {
+        if (t_end - self.t).abs() > 1e-12 {
             let dt_sign = (t_end - self.t).signum();
             self.dt = self.dt.copysign(dt_sign);
         }

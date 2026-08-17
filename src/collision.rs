@@ -20,6 +20,7 @@ pub enum ResolutionOutcome {
 }
 
 impl CollisionResolver {
+    #[must_use]
     pub fn resolve(&self) -> ResolutionOutcome {
         match self {
             CollisionResolver::HardSphere => {

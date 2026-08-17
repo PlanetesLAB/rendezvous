@@ -28,7 +28,7 @@ impl<'a> KeplerSystem<'a> {
         let eta0 = p.x * p.vx + p.y * p.vy + p.z * p.vz;
         let zeta0 = mass - beta * r0;
 
-        KeplerSystem {
+        Self {
             mass,
             r0,
             r0i,
@@ -41,6 +41,7 @@ impl<'a> KeplerSystem<'a> {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn solve(&mut self, dt: f64) {
         struct BetaVals {
             x_per_period: f64,
@@ -125,7 +126,7 @@ impl<'a> KeplerSystem<'a> {
                     let val = self.eta0 * self.gs[1] + self.zeta0 * self.gs[2];
                     let ri = 1.0 / (self.r0 + val);
                     x = ri * (x * val - self.eta0 * self.gs[2] - self.zeta0 * self.gs[3] + dt);
-                    if x == old_x || x == old_x2 {
+                    if (x - old_x).abs() < 1e-12 || (x - old_x2).abs() < 1e-12 {
                         converged = true;
                         break;
                     }

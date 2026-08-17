@@ -1,6 +1,7 @@
+#[must_use]
 pub fn murmur3_32(key: &[u8], seed: u32) -> u32 {
-    let c1: u32 = 0xcc9e2d51;
-    let c2: u32 = 0x1b873593;
+    let c1: u32 = 0xcc9e_2d51;
+    let c2: u32 = 0x1b87_3593;
     let mut h1: u32 = seed;
     let len = key.len() as u32;
     let nblocks = len / 4;
@@ -20,7 +21,7 @@ pub fn murmur3_32(key: &[u8], seed: u32) -> u32 {
 
         h1 ^= k1;
         h1 = h1.rotate_left(13);
-        h1 = h1.wrapping_mul(5).wrapping_add(0xe6546b64);
+        h1 = h1.wrapping_mul(5).wrapping_add(0xe654_6b64);
     }
 
     // tail
@@ -45,9 +46,9 @@ pub fn murmur3_32(key: &[u8], seed: u32) -> u32 {
     // finalization
     h1 ^= len;
     h1 ^= h1 >> 16;
-    h1 = h1.wrapping_mul(0x85ebca6b);
+    h1 = h1.wrapping_mul(0x85eb_ca6b);
     h1 ^= h1 >> 13;
-    h1 = h1.wrapping_mul(0xc2b2ae35);
+    h1 = h1.wrapping_mul(0xc2b2_ae35);
     h1 ^= h1 >> 16;
 
     h1

@@ -26,10 +26,10 @@ pub enum Gravity {
 pub enum IgnoreGravityTerms {
     /// Include all gravity terms.
     IgnoreAll,
-    /// Ignore gravity terms not required for WHFast
+    /// Ignore gravity terms not required for [`WHFast`](crate::whfast::WHFast)
     /// with Jacobi coordinates.
     IgnoreWHFastwithJacobi,
-    /// Ignore gravity terms not required for WHFast
+    /// Ignore gravity terms not required for [`WHFast`](crate::whfast::WHFast)
     /// with Democratic Heliocentric Coordinates.
     IgnoreWHFastwithDHC,
 }
@@ -39,7 +39,7 @@ impl IgnoreGravityTerms {
         match self {
             IgnoreGravityTerms::IgnoreWHFastwithJacobi => (j == 1 && i == 0) || (i == 1 && j == 0),
             IgnoreGravityTerms::IgnoreWHFastwithDHC => i == 0 || j == 0,
-            _ => false,
+            IgnoreGravityTerms::IgnoreAll => false,
         }
     }
 
@@ -51,7 +51,7 @@ impl IgnoreGravityTerms {
         match self {
             IgnoreGravityTerms::IgnoreWHFastwithJacobi => (j == 1 && i == 0) || (i == 1 && j == 0),
             IgnoreGravityTerms::IgnoreWHFastwithDHC => j == 0 || i == 0,
-            _ => false,
+            IgnoreGravityTerms::IgnoreAll => false,
         }
     }
 }
@@ -172,7 +172,7 @@ impl GravityContext<'_> {
         if !matches!(self.integrator, Integrator::WHFast(_) | Integrator::Saba(_)) {
             eprintln!(
                 "WARNING: Jacobi gravity is intended to be used with WHFast or Saba integrators."
-            )
+            );
         }
         let mut rjx = 0.0;
         let mut rjy = 0.0;
@@ -182,7 +182,7 @@ impl GravityContext<'_> {
             self.particles[j].ax = 0.0;
             self.particles[j].ay = 0.0;
             self.particles[j].az = 0.0;
-            for i in 0..j + 1 {
+            for i in 0..=j {
                 if j > 1 {
                     // Jacobi term
                     let qjx = self.particles[j].x - rjx / mj;
@@ -220,6 +220,7 @@ impl GravityContext<'_> {
         }
     }
 
+    #[allow(clippy::cast_possible_wrap)]
     fn apply_basic(&mut self, soft2: f64) {
         self.particles.par_iter_mut().for_each(|p| {
             p.ax = 0.0;
@@ -440,6 +441,7 @@ impl GravityContext<'_> {
         if matches!(self.test_particle_kind, TestParticleKind::Massive) {}
     }
 
+    #[allow(clippy::cast_possible_wrap)]
     fn apply_tree(&mut self) {
         self.particles.iter_mut().for_each(|p| {
             p.ax = 0.0;
@@ -492,7 +494,7 @@ impl GravityContext<'_> {
             _ => {
                 eprintln!(
                     "WARNING: Mercurius gravity is intended to be used with the Mercurius integrator."
-                )
+                );
             }
         }
     }
@@ -678,7 +680,7 @@ impl GravityContext<'_> {
             _ => {
                 eprintln!(
                     "WARNING: Trace gravity is intended to be used with the Trace integrator."
-                )
+                );
             }
         }
     }

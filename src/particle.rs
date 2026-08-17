@@ -39,34 +39,42 @@ pub struct Particles {
 }
 
 impl Particles {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.active.len() + self.test.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.active.is_empty() && self.test.is_empty()
     }
 
+    #[must_use]
     pub fn n_active(&self) -> usize {
         self.active.len()
     }
 
+    #[must_use]
     pub fn n_test(&self) -> usize {
         self.test.len()
     }
 
+    #[must_use]
     pub fn n_real(&self) -> usize {
         self.len()
     }
 
+    #[must_use]
     pub fn are_all_active(&self) -> bool {
         self.all_active || self.test.is_empty()
     }
 
+    #[must_use]
     pub fn active(&self) -> &[Particle] {
         &self.active
     }
@@ -75,6 +83,7 @@ impl Particles {
         &mut self.active
     }
 
+    #[must_use]
     pub fn test(&self) -> &[Particle] {
         &self.test
     }

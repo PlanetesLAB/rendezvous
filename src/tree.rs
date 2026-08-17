@@ -38,16 +38,19 @@ pub struct Tree<M> {
 }
 
 impl<M> Tree<M> {
+    #[must_use]
     pub fn alloc() -> Self {
         Self { nodes: Vec::new() }
     }
 
+    #[must_use]
     pub fn new(size: usize) -> Self {
         Self {
             nodes: Vec::with_capacity(size),
         }
     }
 
+    #[must_use]
     pub fn get_node(&self, id: NodeId) -> Option<&Node<M>> {
         self.nodes[id.0].as_ref()
     }
@@ -61,10 +64,12 @@ impl<M> Tree<M> {
         self.nodes[id.0] = None;
     }
 
+    #[must_use]
     pub fn size(&self) -> usize {
         self.nodes.len()
     }
 
+    #[must_use]
     pub fn get_node_kind(&self, id: NodeId) -> &NodeKind {
         &self.get_node(id).unwrap().kind
     }

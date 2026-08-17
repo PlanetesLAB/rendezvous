@@ -16,6 +16,9 @@ pub enum Boundary {
 }
 
 impl Boundary {
+    #[allow(clippy::many_single_char_names)]
+    #[allow(clippy::cast_precision_loss)]
+    #[must_use]
     pub fn get_ghost_box(
         &self,
         ctx: &BoundaryContext<'_>,
@@ -23,16 +26,11 @@ impl Boundary {
         j: isize,
         k: isize,
     ) -> GhostBox {
+        let ir = i as f64;
+        let jr = j as f64;
+        let kr = k as f64;
+
         match self {
-            Boundary::Open => {
-                let x = ctx.box_size.x * (i as f64);
-                let y = ctx.box_size.y * (j as f64);
-                let z = ctx.box_size.z * (k as f64);
-                GhostBox {
-                    position: Vec3::new(x, y, z),
-                    velocity: Vec3::zero(),
-                }
-            }
             Boundary::Shear => {
                 let omega = match ctx.integrator {
                     Integrator::Sei(i) => i.omega,
@@ -44,9 +42,9 @@ impl Boundary {
                 let vy = -1.5 * (i as f64) * omega * ctx.box_size.x;
                 let vz = 0.0;
 
-                let shift = if i == 0 {
+                let shift = if ir == 0.0 {
                     -(vy * ctx.t) % ctx.box_size.y
-                } else if i > 0 {
+                } else if ir > 0.0 {
                     let rem = -(vy * ctx.t - ctx.box_size.y / 2.0) % ctx.box_size.y;
                     rem - ctx.box_size.y / 2.0
                 } else {
@@ -54,18 +52,18 @@ impl Boundary {
                     rem + ctx.box_size.y / 2.0
                 };
 
-                let x = ctx.box_size.x * (i as f64);
-                let y = ctx.box_size.y * (j as f64) - shift;
-                let z = ctx.box_size.z * (k as f64);
+                let x = ctx.box_size.x * ir;
+                let y = ctx.box_size.y * jr - shift;
+                let z = ctx.box_size.z * kr;
                 GhostBox {
                     position: Vec3::new(x, y, z),
                     velocity: Vec3::new(vx, vy, vz),
                 }
             }
-            Boundary::Periodic => {
-                let x = ctx.box_size.x * (i as f64);
-                let y = ctx.box_size.y * (j as f64);
-                let z = ctx.box_size.z * (k as f64);
+            Boundary::Open | Boundary::Periodic => {
+                let x = ctx.box_size.x * ir;
+                let y = ctx.box_size.y * jr;
+                let z = ctx.box_size.z * kr;
                 GhostBox {
                     position: Vec3::new(x, y, z),
                     velocity: Vec3::zero(),

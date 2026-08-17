@@ -1,10 +1,7 @@
 pub mod corrector;
-pub mod kepler;
 pub mod particle;
 pub mod simd;
-pub mod stiefel;
-pub mod stumpff;
-pub mod types;
+use thiserror::Error;
 
 use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 
@@ -15,7 +12,6 @@ use crate::rendezvous::VariationalOrder;
 
 pub use corrector::Corrector;
 pub use particle::RebParticle;
-pub use types::{Coordinates, Kernel, SafeMode, WHFastError};
 
 pub struct WHFast {
     recalculate_coordinates_this_time_step: bool,
@@ -27,13 +23,13 @@ pub struct WHFast {
     is_synchronized: bool,
     safe_mode: SafeMode,
     particles: Particles,
-    time_step_warning: usize,
+    _time_step_warning: usize,
 }
 
 impl WHFast {
     fn init(&mut self, ctx: &mut SyncContext<'_>) -> Result<(), WHFastError> {
         if let Some(var_cfg) = ctx.var_cfg {
-            for v in var_cfg.iter() {
+            for v in var_cfg {
                 if !matches!(v.order, VariationalOrder::First) {
                     return Err(WHFastError::UnsupportedVariationalOrder);
                 }
@@ -78,7 +74,7 @@ impl WHFast {
                     *ctx.ignore_gravity_terms = IgnoreGravityTerms::IgnoreWHFastwithJacobi;
                 }
                 Coordinates::Barycentric => {
-                    *ctx.ignore_gravity_terms = IgnoreGravityTerms::IgnoreAll
+                    *ctx.ignore_gravity_terms = IgnoreGravityTerms::IgnoreAll;
                 }
                 _ => {
                     *ctx.ignore_gravity_terms = IgnoreGravityTerms::IgnoreWHFastwithDHC;
@@ -115,16 +111,6 @@ impl WHFast {
                     .for_each(|(_i, _p)| {});
             }
 
-            // (1..ctx.particles.n_real()).into_par_iter().for_each(|i| {
-            //     let mut eta = m0;
-            //     let particles = self.particles.as_mut().unwrap();
-            //     for j in 1..(n_active.min(i)) {
-            //         let mass = particles[j].m;
-            //         eta += mass;
-            //     }
-            //     let mut kpl = KeplerSystem::new(&mut particles[i], eta * ctx.g);
-            //     kpl.solve(dt);
-            // }),
             Coordinates::DemocraticHeliocentric => {}
             Coordinates::Whds => {}
             Coordinates::Barycentric => {}
@@ -243,4 +229,54 @@ impl ForceSplit for WHFast {
     fn post_force(&mut self, _ctx: &mut StepContext<'_>) {
         todo!()
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Coordinates {
+    /// Jacobi coordinates (default)
+    Jacobi,
+    /// Democratic Heliocentric coordinates
+    DemocraticHeliocentric,
+    /// WHDS coordinates (Hernandez and Dehnen 2017)
+    Whds,
+    /// Barycentric coordinates
+    Barycentric,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kernel {
+    Default,
+    ModifiedKick,
+    Composition,
+    Lazy,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SafeMode {
+    DriftKickDrift,
+    Combine,
+}
+
+#[derive(Debug, Error)]
+pub enum WHFastError {
+    #[error("WHFast/MEGNO only supports first-order variational equations")]
+    UnsupportedVariationalOrder,
+
+    #[error("Test particle variational particles are not supported in WHFast")]
+    TestParticleVariationalNotSupported,
+
+    #[error("Variational particles require Jacobi coordinates in WHFast")]
+    VariationalJacobiOnly,
+
+    #[error("Non-standard kernels require Jacobi coordinates in WHFast")]
+    NonStandardKernelJacobiOnly,
+
+    #[error("Variational particles are only supported with the standard kernel in WHFast")]
+    VariationalStandardKernelOnly,
+
+    #[error("Symplectic correctors require Jacobi or Barycentric coordinates in WHFast")]
+    SymplecticCorrectorJacobiOrBarycentricOnly,
+
+    #[error("Cannot keep unsynchronized particles when using SafeMode::Combine in WHFast")]
+    InvalidSafeModeCombination,
 }

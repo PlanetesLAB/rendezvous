@@ -1,12 +1,16 @@
 //! Implementation of algorithms discussed in [Hernandez & Dehnen (2024)](https://academic.oup.com/mnras/article/530/4/3870/7642878)
 
+pub mod kepler;
+pub mod stiefel;
+pub mod stumpff;
+
 use planetes_ext::types::Vec3;
 
 pub enum IntegratorError {
     KeplerStepFailed,
 }
 
-const G: f64 = 2.9591220828559093e-4; // AU^3 / (day^2 * solar mass) 
+const G: f64 = 2.959_122_082_855_909_3e-4; // AU^3 / (day^2 * solar mass) 
 
 pub struct Bodies {
     pub q: Vec<Vec3>,
@@ -14,6 +18,7 @@ pub struct Bodies {
 }
 
 impl Bodies {
+    #[must_use]
     pub fn momentum(&self, masses: &[f64]) -> Vec3 {
         masses
             .iter()
@@ -87,7 +92,7 @@ pub struct Symba<'a> {
     pub level_constraint: usize,
 }
 
-impl<'a> Symba<'a> {
+impl Symba<'_> {
     pub fn step(&self, bodies: &mut Bodies) -> Result<(), IntegratorError> {
         let n = self.params.masses.len();
         let r_levels = self.params.r_levels.len();
@@ -177,9 +182,7 @@ impl<'a> KeplerSystem<'a> {
     }
 
     fn step(&mut self, depth: u32) -> Result<(), IntegratorError> {
-        if depth > 30 {
-            panic!("Kepler step did not converge");
-        }
+        assert!(depth <= 30, "Kepler step did not converge");
 
         self.step_internal().or_else(|_| {
             self.dt /= 4.0;
@@ -192,10 +195,12 @@ impl<'a> KeplerSystem<'a> {
             let x0 = self.initial_guess();
             let mut x = x0;
 
-            let result = self.solve_universal_hyperbolic_newton(&mut x).or_else(|_| {
-                x = x0;
-                self.solve_universal_hyperbolic_laguerre(&mut x)
-            });
+            let result = self
+                .solve_universal_hyperbolic_newton(&mut x)
+                .or_else(|()| {
+                    x = x0;
+                    self.solve_universal_hyperbolic_laguerre(&mut x)
+                });
 
             match result {
                 Ok((s2, c2)) => {
@@ -208,7 +213,7 @@ impl<'a> KeplerSystem<'a> {
                     let bsa = (a / r) * (self.b / self.r0) * 2.0 * s2 * c2;
                     (g1, g2, r, ca, bsa)
                 }
-                Err(_) => return Err(IntegratorError::KeplerStepFailed),
+                Err(()) => return Err(IntegratorError::KeplerStepFailed),
             }
         } else if self.beta > 0.0 {
             let mut x0 = self.dt / self.r0;
@@ -217,10 +222,12 @@ impl<'a> KeplerSystem<'a> {
             x0 -= ff / fp;
 
             let mut x = x0;
-            let result = self.solve_universal_hyperbolic_newton(&mut x).or_else(|_| {
-                x = x0;
-                self.solve_universal_hyperbolic_laguerre(&mut x)
-            });
+            let result = self
+                .solve_universal_hyperbolic_newton(&mut x)
+                .or_else(|()| {
+                    x = x0;
+                    self.solve_universal_hyperbolic_laguerre(&mut x)
+                });
 
             match result {
                 Ok((s2, c2)) => {
@@ -233,22 +240,16 @@ impl<'a> KeplerSystem<'a> {
                     let bsa = (a / r) * (self.b / self.r0) * 2.0 * s2 * c2;
                     (g1, g2, r, ca, bsa)
                 }
-                Err(_) => return Err(IntegratorError::KeplerStepFailed),
+                Err(()) => return Err(IntegratorError::KeplerStepFailed),
             }
         } else {
-            let mut x = self.dt / self.r0;
-            let result = self.solve_universal_parabolic(&mut x);
-            match result {
-                Ok((_, _)) => {
-                    let g1 = x;
-                    let g2 = x * x / 2.0;
-                    let ca = self.kc * g2;
-                    let r = self.r0 + self.eta * g1 + self.zeta * g2;
-                    let bsa = (self.kc / x) / (r * self.r0);
-                    (g1, g2, r, ca, bsa)
-                }
-                Err(_) => return Err(IntegratorError::KeplerStepFailed),
-            }
+            let (x, _, _) = self.solve_universal_parabolic();
+            let g1 = x;
+            let g2 = x * x / 2.0;
+            let ca = self.kc * g2;
+            let r = self.r0 + self.eta * g1 + self.zeta * g2;
+            let bsa = (self.kc / x) / (r * self.r0);
+            (g1, g2, r, ca, bsa)
         };
 
         let fhat = -(ca / self.r0);
@@ -270,12 +271,12 @@ impl<'a> KeplerSystem<'a> {
         Ok(())
     }
 
-    fn solve_universal_parabolic(&self, x: &mut f64) -> Result<(f64, f64), ()> {
+    fn solve_universal_parabolic(&self) -> (f64, f64, f64) {
         let a = 3.0 * self.eta / self.zeta;
         let b = 6.0 * self.r0 / self.zeta;
         let c = -6.0 * self.dt / self.zeta;
-        *x = cubic(a, b, c);
-        Ok((0.0, 1.0))
+        let x = cubic(a, b, c);
+        (x, 0.0, 1.0)
     }
 
     fn solve_universal_hyperbolic_newton(&self, x: &mut f64) -> Result<(f64, f64), ()> {

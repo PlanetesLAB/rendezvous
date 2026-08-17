@@ -1,6 +1,13 @@
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/PlanetesLAB/documentation/refs/heads/main/logo.jpg"
 )]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::many_single_char_names)]
+#![allow(clippy::struct_excessive_bools)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_lossless)]
 
 pub mod boundary;
 pub mod collision;

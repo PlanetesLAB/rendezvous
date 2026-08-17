@@ -26,7 +26,9 @@ pub struct Mercurius {
 }
 
 impl Mercurius {
-    /// Switching function between close-encounter (IAS15) and long-range (WHFast) integrators.
+    /// Switching function between close-encounter ([`IAS15`](crate::ias15::Ias15)) and
+    /// long-range ([`WHFast`](crate::whfast::WHFast)) integrators.
+    #[must_use]
     pub fn switch(&self, d: f64, dcrit_max: f64) -> f64 {
         match self.switch_fn {
             SwitchFunction::Mercury => Self::switch_mercury(d, dcrit_max),
@@ -112,9 +114,8 @@ impl Mercurius {
                 let pi = &particles[new_index];
                 self.set_dcrit(p0, pi, g, dt, new_index);
                 if self.particles_backup.len() < particles.len() {
-                    self.particles_backup.resize_as(&particles);
-                    self.particles_backup_additional_forces
-                        .resize_as(&particles);
+                    self.particles_backup.resize_as(particles);
+                    self.particles_backup_additional_forces.resize_as(particles);
                 }
                 self.encounter_map.push(new_index);
                 if particles.are_all_active() {
@@ -189,9 +190,9 @@ impl ForceSplit for Mercurius {
 }
 
 pub enum MercuriusMode {
-    /// WHFast
+    /// For [`WHFast`]
     LongRange,
-    /// IAS15
+    /// For [`IAS15`](crate::ias15::Ias15)
     CloseEncounter,
 }
 
