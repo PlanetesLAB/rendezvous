@@ -1,5 +1,8 @@
 #![allow(clippy::excessive_precision)]
 
+mod particle;
+mod simd;
+
 use std::f64::consts::PI;
 use std::mem;
 
