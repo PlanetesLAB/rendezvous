@@ -20,10 +20,18 @@ pub trait SimdF64: Copy {
     fn load(values: &[f64; 8]) -> Self;
     fn store(self, values: &mut [f64; 8]);
 
+    #[must_use]
     fn add(self, rhs: Self) -> Self;
+
+    #[must_use]
     fn sub(self, rhs: Self) -> Self;
+
+    #[must_use]
     fn mul(self, rhs: Self) -> Self;
+
+    #[must_use]
     fn div(self, rhs: Self) -> Self;
 
+    #[must_use]
     fn sqrt(self) -> Self;
 }

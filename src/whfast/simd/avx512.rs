@@ -1,3 +1,5 @@
+#![allow(clippy::wildcard_imports)]
+
 use std::arch::x86_64::*;
 
 use super::SimdF64;

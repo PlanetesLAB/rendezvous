@@ -1,8 +1,10 @@
 use std::ops::{Index, IndexMut};
 
 use rayon::iter::{
-    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+    Chain, IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    IntoParallelRefMutIterator, ParallelIterator,
 };
+use rayon::slice::{Iter as ParIter, IterMut as ParIterMut};
 
 use crate::tree::NodeId;
 
@@ -37,48 +39,159 @@ pub struct Particles {
 }
 
 impl Particles {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn len(&self) -> usize {
+        self.active.len() + self.test.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.active.is_empty() && self.test.is_empty()
+    }
+
+    pub fn n_active(&self) -> usize {
+        self.active.len()
+    }
+
+    pub fn n_test(&self) -> usize {
+        self.test.len()
+    }
+
+    pub fn n_real(&self) -> usize {
+        self.len()
+    }
+
     pub fn are_all_active(&self) -> bool {
-        self.all_active
+        self.all_active || self.test.is_empty()
+    }
+
+    pub fn active(&self) -> &[Particle] {
+        &self.active
+    }
+
+    pub fn active_mut(&mut self) -> &mut [Particle] {
+        &mut self.active
+    }
+
+    pub fn test(&self) -> &[Particle] {
+        &self.test
+    }
+
+    pub fn test_mut(&mut self) -> &mut [Particle] {
+        &mut self.test
+    }
+
+    pub fn split_active_test_mut(&mut self) -> (&[Particle], &mut [Particle]) {
+        (&self.active, &mut self.test)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Particle> {
+        self.active.iter().chain(self.test.iter())
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Particle> {
+        self.active.iter_mut().chain(self.test.iter_mut())
+    }
+
+    pub fn real_iter(&self) -> impl Iterator<Item = &Particle> {
+        self.iter()
+    }
+
+    pub fn real_iter_mut(&mut self) -> impl Iterator<Item = &mut Particle> {
+        self.iter_mut()
+    }
+
+    /// Resizes both `active` and `test` particle buffers to match the dimensions
+    /// of the target `other: &Particles`.
+    pub fn resize_as(&mut self, other: &Particles) {
+        self.active.resize(other.active.len(), Particle::default());
+        self.test.resize(other.test.len(), Particle::default());
+        self.all_active = other.all_active;
+    }
+
+    /// Removes the particle at unified index `index`.
+    ///
+    /// If `keep_sorted` is true, performs a standard `remove` (O(N) shift).
+    /// If `keep_sorted` is false, performs an O(1) `swap_remove`.
+    pub fn remove_at(&mut self, index: usize, keep_sorted: bool) -> Particle {
+        let n_active = self.active.len();
+        if index < n_active {
+            if keep_sorted {
+                self.active.remove(index)
+            } else {
+                self.active.swap_remove(index)
+            }
+        } else {
+            let test_idx = index - n_active;
+            if keep_sorted {
+                self.test.remove(test_idx)
+            } else {
+                self.test.swap_remove(test_idx)
+            }
+        }
+    }
+
+    /// Removes all active and test particles from the collection,
+    /// retaining allocated capacity for future reuse.
+    pub fn clear(&mut self) {
+        self.active.clear();
+        self.test.clear();
+        self.all_active = true;
     }
 }
 
-// impl Index<usize> for Particles {
-//     type Output = Particle;
+impl Index<usize> for Particles {
+    type Output = Particle;
 
-//     fn index(&self, index: usize) -> &Self::Output {
-//         let n_active = self.active.len();
-//         if index < n_active {
-//             &self.active[index]
-//         } else {
-//             let index = index - n_active;
-//             let n_test = self.test.len();
-//             if index < n_test {
-//                 &self.test[index]
-//             } else {
-//                 let index = index - n_test;
-//                 &self.variational[index]
-//             }
-//         }
-//     }
-// }
+    fn index(&self, index: usize) -> &Self::Output {
+        if index < self.active.len() {
+            &self.active[index]
+        } else {
+            &self.test[index - self.active.len()]
+        }
+    }
+}
 
-// impl IndexMut<usize> for Particles {
-//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-//         let n_active = self.active.len();
-//         if index < n_active {
-//             &mut self.active[index]
-//         } else {
-//             let index = index - n_active;
-//             let n_test = self.test.len();
-//             if index < n_test {
-//                 &mut self.test[index]
-//             } else {
-//                 let index = index - n_test;
-//                 &mut self.variational[index]
-//             }
-//         }
-//     }
-// }
+impl IndexMut<usize> for Particles {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        let n_active = self.active.len();
+        if index < n_active {
+            &mut self.active[index]
+        } else {
+            &mut self.test[index - n_active]
+        }
+    }
+}
+
+impl<'a> IntoParallelIterator for &'a Particles {
+    type Item = &'a Particle;
+    type Iter = Chain<ParIter<'a, Particle>, ParIter<'a, Particle>>;
+
+    fn into_par_iter(self) -> Self::Iter {
+        self.active.par_iter().chain(self.test.par_iter())
+    }
+}
+
+impl<'a> IntoParallelIterator for &'a mut Particles {
+    type Item = &'a mut Particle;
+    type Iter = Chain<ParIterMut<'a, Particle>, ParIterMut<'a, Particle>>;
+
+    fn into_par_iter(self) -> Self::Iter {
+        self.active.par_iter_mut().chain(self.test.par_iter_mut())
+    }
+}
+
+impl Particles {
+    pub fn par_iter(&self) -> Chain<ParIter<'_, Particle>, ParIter<'_, Particle>> {
+        self.into_par_iter()
+    }
+
+    pub fn par_iter_mut(&mut self) -> Chain<ParIterMut<'_, Particle>, ParIterMut<'_, Particle>> {
+        self.into_par_iter()
+    }
+}
 
 pub trait Transformations {
     fn transform_jacobi_to_inertial_posvel(

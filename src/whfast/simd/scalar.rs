@@ -21,56 +21,26 @@ impl SimdF64 for ScalarF64x8 {
 
     #[inline]
     fn add(self, rhs: Self) -> Self {
-        let mut result = [0.0; 8];
-
-        for i in 0..8 {
-            result[i] = self.0[i] + rhs.0[i];
-        }
-
-        Self(result)
+        Self(std::array::from_fn(|i| self.0[i] + rhs.0[i]))
     }
 
     #[inline]
     fn sub(self, rhs: Self) -> Self {
-        let mut result = [0.0; 8];
-
-        for i in 0..8 {
-            result[i] = self.0[i] - rhs.0[i];
-        }
-
-        Self(result)
+        Self(std::array::from_fn(|i| self.0[i] - rhs.0[i]))
     }
 
     #[inline]
     fn mul(self, rhs: Self) -> Self {
-        let mut result = [0.0; 8];
-
-        for i in 0..8 {
-            result[i] = self.0[i] * rhs.0[i];
-        }
-
-        Self(result)
+        Self(std::array::from_fn(|i| self.0[i] * rhs.0[i]))
     }
 
     #[inline]
     fn div(self, rhs: Self) -> Self {
-        let mut result = [0.0; 8];
-
-        for i in 0..8 {
-            result[i] = self.0[i] / rhs.0[i];
-        }
-
-        Self(result)
+        Self(std::array::from_fn(|i| self.0[i] / rhs.0[i]))
     }
 
     #[inline]
     fn sqrt(self) -> Self {
-        let mut result = [0.0; 8];
-
-        for i in 0..8 {
-            result[i] = self.0[i].sqrt();
-        }
-
-        Self(result)
+        Self(std::array::from_fn(|i| self.0[i].sqrt()))
     }
 }

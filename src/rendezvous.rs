@@ -282,12 +282,12 @@ impl Simulation {
         if let Some(min_distance) = self.exit_min_distance {
             let min2 = min_distance * min_distance;
             for i in 0..self.particles.n_real() {
-                let p = &self.particles[i];
+                let particle = &self.particles[i];
                 for j in 0..i {
                     let q = &self.particles[j];
-                    let x = p.x - q.x;
-                    let y = p.y - q.y;
-                    let z = p.z - q.z;
+                    let x = particle.x - q.x;
+                    let y = particle.y - q.y;
+                    let z = particle.z - q.z;
                     let r2 = x * x + y * y + z * z;
                     if r2 < min2 {
                         return ControlFlow::Break(ExitStatus::Encounter);
@@ -523,8 +523,26 @@ impl Simulation {
             || p.z < -self.box_size.z / 2.0
     }
 
-    fn remove(&mut self, pi: usize, mut keep_sorted: bool) {
+    fn remove(&mut self, pi: usize, mut keep_sorted: bool) -> bool {
         let n = self.particles.len();
+
+        if pi >= n {
+            eprintln!(
+                "ERROR: Index {} passed to remove was out of range (N={}). Did not remove particle.",
+                pi, n
+            );
+            return false;
+        }
+
+        if let Some(ref cfgs) = self.var_cfg {
+            if !cfgs.is_empty() {
+                eprintln!(
+                    "WARNING: Removing particles not supported when calculating MEGNO / Variational equations. \
+             The particle was not removed."
+                );
+                return false;
+            }
+        }
 
         match &mut self.integrator {
             Integrator::Mercurius(m) => keep_sorted = m.remove(pi),
@@ -535,29 +553,23 @@ impl Simulation {
         if n == 1 {
             self.particles.clear();
             eprintln!("WARNING: Removing the last particle from the simulation.");
+            return true;
         }
 
-        if !self.particles.variational.is_empty() {
-            eprintln!(
-                "WARNING: Removing particles not supported when calculating MEGNO. \
-                 The particle was not removed."
-            );
-        }
-
-        if keep_sorted {
-            self.particles.active.remove(pi);
-
-            if self.tree.is_some() {
+        if self.tree.is_some() {
+            if keep_sorted {
                 eprintln!(
-                    "WARNING: Removing particles while using tree is not possible at the moment. \
-                     The particle was not removed."
+                    "WARNING: Cannot keep particles sorted while using a tree. \
+                     Flagging particle as removed instead."
                 );
             }
-        } else if self.tree.is_some() {
             self.particles[pi].removed = true;
+            self.tree_needs_update = true;
         } else {
-            self.particles.active.swap_remove(pi);
+            self.particles.remove_at(pi, keep_sorted);
         }
+
+        true
     }
 
     /// Add and initialize a set of first-order variational particles.
@@ -586,6 +598,11 @@ impl Simulation {
     }
 
     pub fn add_variational_second_order(&mut self) {}
+
+    /// Returns true if there are active variational configurations in the simulation.
+    pub fn has_variational(&self) -> bool {
+        self.var_cfg.as_ref().map_or(false, |cfgs| !cfgs.is_empty())
+    }
 
     pub fn update_tree(&mut self) {
         let size = self.root_x * self.root_y * self.root_z;
@@ -864,7 +881,7 @@ impl Simulation {
 
         self.update_accelerations();
 
-        if !self.particles.variational.is_empty() {
+        if !self.has_variational() {
             self.update_accelerations_for_variational_particles();
         }
 
@@ -888,7 +905,7 @@ impl Simulation {
             }
         }
 
-        if !self.particles.variational.is_empty() {
+        if !self.has_variational() {
             self.rescale_variational_particles();
         }
 

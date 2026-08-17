@@ -1,3 +1,5 @@
+#![allow(clippy::wildcard_imports)]
+
 use std::arch::aarch64::*;
 
 use super::SimdF64;
@@ -16,6 +18,30 @@ impl SimdF64 for NeonF64x8 {
                 vdupq_n_f64(x),
                 vdupq_n_f64(x),
             )
+        }
+    }
+
+    #[inline]
+    fn load(values: &[f64; 8]) -> Self {
+        unsafe {
+            let ptr = values.as_ptr();
+            Self(
+                vld1q_f64(ptr),
+                vld1q_f64(ptr.add(2)),
+                vld1q_f64(ptr.add(4)),
+                vld1q_f64(ptr.add(6)),
+            )
+        }
+    }
+
+    #[inline]
+    fn store(self, values: &mut [f64; 8]) {
+        unsafe {
+            let ptr = values.as_mut_ptr();
+            vst1q_f64(ptr, self.0);
+            vst1q_f64(ptr.add(2), self.1);
+            vst1q_f64(ptr.add(4), self.2);
+            vst1q_f64(ptr.add(6), self.3);
         }
     }
 
