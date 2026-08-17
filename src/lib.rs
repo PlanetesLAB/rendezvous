@@ -1,3 +1,7 @@
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/PlanetesLAB/documentation/refs/heads/main/logo.jpg"
+)]
+
 pub mod boundary;
 pub mod collision;
 pub mod eos;
